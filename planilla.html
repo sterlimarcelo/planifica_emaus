@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Agenda y Planilla - La Experiencia de Emaús</title>
+  <style>
+    body{font-family:Arial, sans-serif;background:#f5f6fa;margin:0;padding:0;color:#111}
+    header{background:#0b3b6f;color:#fff;padding:16px}
+    .container{max-width:1200px;margin:20px auto;padding:16px;background:#fff;border-radius:8px}
+    .tabs{display:flex;gap:10px;margin-bottom:10px}
+    .tab{padding:8px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer;background:#f9fafb}
+    .tab.active{background:#1f6feb;color:#fff;border-color:#1f6feb}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px}
+    th,td{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+    th{background:#f0f2f5}
+    button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;color:#fff;background:#1f6feb;margin:4px 2px}
+    button.delete{background:#c62828}
+    textarea{width:100%;min-height:50px;border:1px solid #ccc;border-radius:6px;padding:6px;resize:vertical}
+    tr.dragging{opacity:0.5;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agenda y Planilla - La Experiencia de Emaús</h1>
+  </header>
+  <main class="container">
+    <div class="tabs">
+      <div class="tab active" data-tab="cronograma">Cronograma General</div>
+      <div class="tab" data-tab="logistica">Logística y Equipos</div>
+      <div class="tab" data-tab="charlas">Charlas y Momentos</div>
+      <div class="tab" data-tab="checklist">Checklist General</div>
+    </div>
+
+    <!-- Cronograma General -->
+    <section id="cronograma" class="panel">
+      <button id="saveAll">💾 Guardar cambios</button>
+      <button id="loadSaved">📂 Cargar guardado</button>
+      <button id="exportXlsx">⬇️ Exportar Excel</button>
+      <button id="addCrono">➕ Agregar fila</button>
+      <table id="tblCronograma">
+        <thead>
+          <tr><th>Día</th><th>Hora</th><th>Actividad</th><th>Responsable</th><th>Lugar</th><th>Materiales / Observaciones</th><th>Nota espiritual</th><th>Referencia Manual</th><th>Observaciones</th><th>Acción</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Logística -->
+    <section id="logistica" class="panel" style="display:none">
+      <button id="addLog">➕ Agregar ministerio</button>
+      <table id="tblLogistica">
+        <thead>
+          <tr><th>Ministerio</th><th>Descripción</th><th>Responsable</th><th>Teléfono</th><th>Referencia Manual</th><th>Observaciones</th><th>Acción</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Charlas -->
+    <section id="charlas" class="panel" style="display:none">
+      <button id="addCharla">➕ Agregar charla</button>
+      <table id="tblCharlas">
+        <thead>
+          <tr><th>Tema</th><th>Orador</th><th>Hora</th><th>Duración</th><th>Texto bíblico</th><th>Referencia Manual</th><th>Observaciones</th><th>Acción</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Checklist -->
+    <section id="checklist" class="panel" style="display:none">
+      <button id="addCheck">➕ Agregar tarea</button>
+      <table id="tblChecklist">
+        <thead>
+          <tr><th>Tarea</th><th>Responsable</th><th>Fecha límite</th><th>Estado</th><th>Referencia Manual</th><th>Observaciones</th><th>Acción</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    let data = JSON.parse(localStorage.getItem('emausData')) || {
+      cronograma: [
+        ["Viernes","18:00","Llegada del equipo y ambientación","Coordinadora","Parroquia","Velas, música suave","Actitud de acogida","Pág.115","Preparar bienvenida y materiales."],
+        ["Viernes","19:00","Ceremonia de envío del equipo","Sacerdote / Coordinadora","Capilla","Biblia, música","Inicio del Camino","Págs.116–118","Compromiso de servicio."],
+        ["Sábado","09:00","Charla: Conociendo a Dios a través de conocerse a sí mismo","Oradora 1","Salón","Biblia, cuaderno","Reflexión interior","Pág.157","Agregar testimonio."],
+        ["Sábado","20:00","Ceremonia de la Pared","Líder espiritual","Salón principal","Cartas, mural","Encuentro con Cristo","Pág.225","Revisar música."],
+        ["Domingo","11:00","Misa de clausura y cierre","Párroco","Capilla","Eucaristía","Celebración y envío","Pág.145","Organizar cantos finales."]
+      ],
+      logistica: [
+        ["Ministerio del Pan","Alimentación de los participantes","Marta 1","—","Págs.187–189","Revisar menú y horarios."],
+        ["Ministerio de Conductores","Transporte de caminantes","Pedro 1","—","Págs.190–192","Controlar rutas."],
+        ["Ministerio de la Pared","Recolección de cartas","Coordinadora","—","Págs.225–228","Mantener confidencialidad."]
+      ],
+      charlas: [
+        ["Conociendo a Dios a través de conocerse a sí mismo","Orador 1","09:00","20 min","Lucas 24:13–35","Pág.157","Incluir dinámica grupal."],
+        ["Conociendo a Dios a través de las Escrituras","Orador 2","11:00","20 min","Lucas 24:13–35","Pág.159","Lectura guiada."],
+        ["Amando a Dios a través del servicio","Orador 6","09:00","20 min","Lucas 24:13–35","Pág.173","Cerrar con compromiso."]
+      ],
+      checklist: [
+        ["Confirmar casa de retiro","Coordinadora","2 meses antes","Pendiente","Pág.5","Verificar disponibilidad."],
+        ["Contactar sacerdotes","Coordinadora","1 mes antes","Pendiente","Pág.6","Definir confesores."],
+        ["Evaluación post-retiro","Coordinadora","Domingo tarde","Pendiente","Pág.235","Recolectar sugerencias."]
+      ]
+    };
+
+    function renderTable(id, arr){
+      const tbody=document.querySelector(`#${id} tbody`);
+      tbody.innerHTML='';
+      arr.forEach((r,idx)=>{
+        const tr=document.createElement('tr');
+        r.forEach((c,i)=>{
+          const td=document.createElement('td');
+          if(i === r.length-2){
+            const t = document.createElement('textarea');
+            t.value = c;
+            t.oninput = () => { r[i] = t.value; saveLocal(); };
+            td.appendChild(t);
+          } else {
+            td.contentEditable = true;
+            td.innerText = c;
+            td.oninput = () => { r[i] = td.innerText; saveLocal(); };
+          }
+          tr.appendChild(td);
+        });
+        const td = document.createElement('td');
+        const del = document.createElement('button');
+        del.textContent = 'Eliminar';
+        del.className = 'delete';
+        del.onclick = () => { arr.splice(idx,1); refreshAll(); saveLocal(); };
+        td.appendChild(del);
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function enableDragSort(tbody, dataArray){
+      let dragSrcRow = null;
+
+      tbody.addEventListener('dragstart', (e) => {
+        dragSrcRow = e.target;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', e.target.innerHTML);
+        dragSrcRow.classList.add('dragging');
+      });
+
+      tbody.addEventListener('dragend', () => {
+        if(dragSrcRow) dragSrcRow.classList.remove('dragging');
+        dragSrcRow = null;
+      });
+
+      tbody.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+
+      tbody.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if(dragSrcRow && e.target.tagName === 'TD'){
+          const tr = e.target.closest('tr');
+          if(tr && tr !== dragSrcRow){
+            const fromIndex = Array.from(tbody.children).indexOf(dragSrcRow);
+            const toIndex = Array.from(tbody.children).indexOf(tr);
+            const moved = dataArray.splice(fromIndex,1)[0];
+            dataArray.splice(toIndex,0,moved);
+            refreshAll();
+            saveLocal();
+          }
+        }
+      });
+
+      Array.from(tbody.querySelectorAll('tr')).forEach(tr => tr.setAttribute('draggable', true));
+    }
+
+    function refreshAll(){
+      renderTable('tblCronograma', data.cronograma);
+      renderTable('tblLogistica', data.logistica);
+      renderTable('tblCharlas', data.charlas);
+      renderTable('tblChecklist', data.checklist);
+
+      enableDragSort(document.querySelector('#tblCronograma tbody'), data.cronograma);
+      enableDragSort(document.querySelector('#tblLogistica tbody'), data.logistica);
+      enableDragSort(document.querySelector('#tblCharlas tbody'), data.charlas);
+      enableDragSort(document.querySelector('#tblChecklist tbody'), data.checklist);
+    }
+
+    function saveLocal(){ localStorage.setItem('emausData',JSON.stringify(data)); }
+    function loadLocal(){
+      const d=localStorage.getItem('emausData');
+      if(d){ data=JSON.parse(d); refreshAll(); alert('Datos cargados correctamente'); }
+    }
+
+    document.getElementById('saveAll').onclick = () => { saveLocal(); alert('Datos guardados localmente'); };
+    document.getElementById('loadSaved').onclick = () => { loadLocal(); };
+
+    document.getElementById('addCrono').onclick = () => { data.cronograma.push(Array(10).fill('')); refreshAll(); };
+    document.getElementById('addLog').onclick = () => { data.logistica.push(Array(7).fill('')); refreshAll(); };
+    document.getElementById('addCharla').onclick = () => { data.charlas.push(Array(8).fill('')); refreshAll(); };
+    document.getElementById('addCheck').onclick = () => { data.checklist.push(Array(7).fill('')); refreshAll(); };
+
+    document.querySelectorAll('.tab').forEach(tab=>{
+      tab.onclick=()=>{
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.panel').forEach(p=>p.style.display='none');
+        document.getElementById(tab.dataset.tab).style.display='block';
+      };
+    });
+
+    document.getElementById('exportXlsx').onclick=()=>{
+      const wb=XLSX.utils.book_new();
+      const addSheet=(n,a)=>{ if(!a.length)return; XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a),n); };
+      addSheet('Cronograma',data.cronograma);
+      addSheet('Logistica',data.logistica);
+      addSheet('Charlas',data.charlas);
+      addSheet('Checklist',data.checklist);
+      XLSX.writeFile(wb,'Planilla_Retiro_Emaus_Completa.xlsx');
+    };
+
+    refreshAll();
+  </script>
+</body>
+</html>
