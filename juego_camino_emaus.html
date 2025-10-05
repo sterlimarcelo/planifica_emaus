@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -13,16 +12,16 @@
             text-align: center;
             padding: 20px;
         }
-        
+
         h1 {
             color: #8B4513;
         }
-        
+
         #logo {
             margin: 20px auto;
             max-width: 300px;
         }
-        
+
         #game-container {
             max-width: 600px;
             margin: 0 auto;
@@ -31,26 +30,26 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        
+
         #progress-container {
             margin: 20px 0;
             background-color: #ddd;
             border-radius: 5px;
             overflow: hidden;
         }
-        
+
         #progress-bar {
             height: 20px;
             width: 0%;
             background-color: #4CAF50;
             transition: width 0.3s;
         }
-        
+
         #question {
             font-size: 18px;
             margin: 20px 0;
         }
-        
+
         .option {
             background-color: #4CAF50;
             color: white;
@@ -62,17 +61,17 @@
             font-size: 16px;
             width: 100%;
         }
-        
+
         .option:hover {
             background-color: #45a049;
         }
-        
+
         #feedback {
             margin: 20px 0;
             font-weight: bold;
             font-size: 18px;
         }
-        
+
         #score {
             font-size: 20px;
             margin: 20px 0;
@@ -80,10 +79,10 @@
     </style>
 </head>
 <body>
-     <img id="logo" src="logo-emaus.png" alt="Logo Emaús">
-	<h1>JUEGO DEL PREGUNTADO</h1>
-	<h1>Desafiate y probá cuanto sabes del Camino de Emaús</h1>
-   
+    
+    <img id="logo" src="logo-emaus.png	" alt="Logo Emaús">
+	<h1>EL PREGUNTADO DE EMAUS</h1>
+	<h1>Desafíate y proba cuanto conoces del Camino de Emaús</h1>
     <div id="game-container">
         <div id="progress-container">
             <div id="progress-bar"></div>
@@ -570,6 +569,11 @@
 
         let currentQuestion = 0;
         let score = 0;
+        let shuffledQuestions = [];
+
+        function shuffleQuestions() {
+            shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
+        }
 
         function loadQuestion() {
             const questionElement = document.getElementById('question');
@@ -578,7 +582,7 @@
 
             feedbackElement.textContent = '';
 
-            const question = questions[currentQuestion];
+            const question = shuffledQuestions[currentQuestion];
             questionElement.textContent = question.question;
 
             optionsElement.innerHTML = '';
@@ -595,7 +599,7 @@
 
         function checkAnswer(selectedIndex) {
             const feedbackElement = document.getElementById('feedback');
-            const question = questions[currentQuestion];
+            const question = shuffledQuestions[currentQuestion];
 
             if (selectedIndex === question.answer) {
                 feedbackElement.textContent = '¡Correcto!';
@@ -609,14 +613,15 @@
             document.getElementById('score-value').textContent = score;
 
             currentQuestion++;
-            if (currentQuestion < questions.length) {
+            if (currentQuestion < shuffledQuestions.length) {
                 setTimeout(loadQuestion, 1500);
             } else {
                 setTimeout(() => {
-                    alert(`Juego terminado. Tu puntuación es: ${score}/${questions.length}`);
+                    alert(`Juego terminado. Tu puntuación es: ${score}/${shuffledQuestions.length}`);
                     currentQuestion = 0;
                     score = 0;
                     document.getElementById('score-value').textContent = score;
+                    shuffleQuestions();
                     loadQuestion();
                 }, 1500);
             }
@@ -624,10 +629,11 @@
 
         function updateProgressBar() {
             const progressBar = document.getElementById('progress-bar');
-            const progressPercentage = ((currentQuestion) / questions.length) * 100;
+            const progressPercentage = ((currentQuestion) / shuffledQuestions.length) * 100;
             progressBar.style.width = progressPercentage + '%';
         }
 
+        shuffleQuestions();
         loadQuestion();
     </script>
 </body>
