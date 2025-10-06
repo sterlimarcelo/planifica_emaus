@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juego del Camino de Emaús</title>
+    <title>Juego del Camino de Emaús — 100 Preguntas</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,7 +23,7 @@
         }
 
         #game-container {
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto;
             background-color: #fff;
             padding: 20px;
@@ -76,24 +76,60 @@
             font-size: 20px;
             margin: 20px 0;
         }
+
+        #chart-container {
+            width: 300px;
+            margin: 20px auto;
+        }
+
+        canvas {
+            background-color: #fafafa;
+            border-radius: 10px;
+        }
+
+        #restart-btn {
+            background-color: #8B4513;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+            margin-top: 15px;
+        }
+
+        #restart-btn:hover {
+            background-color: #a0522d;
+        }
     </style>
 </head>
 <body>
-    
-    <img id="logo" src="logo-emaus.png	" alt="Logo Emaús">
-	<h1>EL PREGUNTADO DE EMAUS</h1>
-	<h1>Desafíate y proba cuanto conoces del Camino de Emaús</h1>
+
+    <img id="logo" src="logo-emaus.png" alt="Logo Emaús">
+    <h1>EL PREGUNTADO DE EMAÚS — 100 PREGUNTAS</h1>
+    <h2>Desafíate y probá cuánto conocés del Camino de Emaús</h2>
+
     <div id="game-container">
         <div id="progress-container">
             <div id="progress-bar"></div>
         </div>
+
         <div id="score">Puntuación: <span id="score-value">0</span></div>
+        <div id="chart-container">
+            <canvas id="progressChart" width="300" height="300"></canvas>
+        </div>
+
         <div id="question"></div>
         <div id="options"></div>
         <div id="feedback"></div>
+
+        <button id="restart-btn" onclick="restartGame()">Volver a jugar</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // === BANCO DE PREGUNTAS (idéntico al original, no modifiques nada) ===
         const questions = [
             {
                 question: "¿Qué significa la palabra 'Palanca' en el contexto espiritual de Emaús?",
@@ -569,37 +605,55 @@
 
         let currentQuestion = 0;
         let score = 0;
+        let incorrect = 0;
         let shuffledQuestions = [];
+        let chart; // referencia global del gráfico
 
+        // Mezclar preguntas
         function shuffleQuestions() {
             shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
         }
 
+        // Mezclar opciones y ajustar posición correcta
+        function shuffleOptions(question) {
+            const options = question.options.map((opt, i) => ({ text: opt, index: i }));
+            const shuffled = options.sort(() => Math.random() - 0.5);
+            const newAnswerIndex = shuffled.findIndex(o => o.index === question.answer);
+            return { options: shuffled.map(o => o.text), answer: newAnswerIndex };
+        }
+
+        // Cargar pregunta actual
         function loadQuestion() {
             const questionElement = document.getElementById('question');
             const optionsElement = document.getElementById('options');
             const feedbackElement = document.getElementById('feedback');
+            const restartBtn = document.getElementById('restart-btn');
 
             feedbackElement.textContent = '';
+            restartBtn.style.display = 'none';
 
-            const question = shuffledQuestions[currentQuestion];
+            const originalQuestion = shuffledQuestions[currentQuestion];
+            const { options, answer } = shuffleOptions(originalQuestion);
+            const question = { ...originalQuestion, options, answer };
+
             questionElement.textContent = question.question;
-
             optionsElement.innerHTML = '';
+
             question.options.forEach((option, index) => {
                 const button = document.createElement('button');
                 button.textContent = option;
                 button.className = 'option';
-                button.onclick = () => checkAnswer(index);
+                button.onclick = () => checkAnswer(index, question);
                 optionsElement.appendChild(button);
             });
 
             updateProgressBar();
+            updateChart();
         }
 
-        function checkAnswer(selectedIndex) {
+        // Verificar respuesta
+        function checkAnswer(selectedIndex, question) {
             const feedbackElement = document.getElementById('feedback');
-            const question = shuffledQuestions[currentQuestion];
 
             if (selectedIndex === question.answer) {
                 feedbackElement.textContent = '¡Correcto!';
@@ -608,31 +662,80 @@
             } else {
                 feedbackElement.textContent = `Incorrecto. La respuesta correcta es: ${question.options[question.answer]}`;
                 feedbackElement.style.color = 'red';
+                incorrect++;
             }
 
             document.getElementById('score-value').textContent = score;
+
+            updateChart();
 
             currentQuestion++;
             if (currentQuestion < shuffledQuestions.length) {
                 setTimeout(loadQuestion, 1500);
             } else {
-                setTimeout(() => {
-                    alert(`Juego terminado. Tu puntuación es: ${score}/${shuffledQuestions.length}`);
-                    currentQuestion = 0;
-                    score = 0;
-                    document.getElementById('score-value').textContent = score;
-                    shuffleQuestions();
-                    loadQuestion();
-                }, 1500);
+                setTimeout(showFinalResults, 1500);
             }
         }
 
+        // Barra de progreso
         function updateProgressBar() {
             const progressBar = document.getElementById('progress-bar');
             const progressPercentage = ((currentQuestion) / shuffledQuestions.length) * 100;
             progressBar.style.width = progressPercentage + '%';
         }
 
+        // Crear o actualizar gráfico de torta
+        function updateChart() {
+            const ctx = document.getElementById('progressChart');
+            const total = score + incorrect || 1;
+            const correctPercent = (score / total) * 100;
+            const incorrectPercent = (incorrect / total) * 100;
+
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Correctas', 'Incorrectas'],
+                    datasets: [{
+                        data: [score, incorrect],
+                        backgroundColor: ['#4CAF50', '#F44336']
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Mostrar resultados finales
+        function showFinalResults() {
+            const questionElement = document.getElementById('question');
+            const optionsElement = document.getElementById('options');
+            const feedbackElement = document.getElementById('feedback');
+            const restartBtn = document.getElementById('restart-btn');
+
+            questionElement.textContent = `Juego terminado. Tu puntuación es: ${score}/${shuffledQuestions.length}`;
+            optionsElement.innerHTML = '';
+            feedbackElement.textContent = '';
+            restartBtn.style.display = 'inline-block';
+        }
+
+        // Reiniciar
+        function restartGame() {
+            score = 0;
+            incorrect = 0;
+            currentQuestion = 0;
+            document.getElementById('score-value').textContent = score;
+            shuffleQuestions();
+            loadQuestion();
+        }
+
+        // Inicializar
         shuffleQuestions();
         loadQuestion();
     </script>
